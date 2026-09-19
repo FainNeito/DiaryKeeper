@@ -131,6 +131,32 @@ public final class DiaryAnalyticsStore {
         return lastActivityByPlayer.getOrDefault(playerUuid, 0L);
     }
 
+    /**
+     * Builds a one-time migration summary from retained analytics. This is only
+     * used for players whose dedicated advancement evidence has not been initialized.
+     */
+    public Map<UUID, DiaryAdvancementEvidence> advancementEvidenceSummary() {
+        Map<UUID, DiaryAdvancementEvidence> summary = new HashMap<>();
+        for (DiaryAnalyticsEvent event : events) {
+            UUID playerId = event.playerUuid();
+            if (playerId == null) continue;
+            DiaryAdvancementEvidence current =
+                    summary.getOrDefault(playerId, DiaryAdvancementEvidence.EMPTY);
+            DiaryAdvancementEvidence next = switch (event.type()) {
+                case INITIAL_ISSUE, ADMIN_ISSUE -> current.withReceived();
+                case DIARY_EDITED -> "edited".equalsIgnoreCase(event.detail())
+                        ? current.recordEdit() : current;
+                case DIARY_OBTAINED -> current.recordGroundPickup();
+                case VOID_RETURN -> current.recordVoidReturn();
+                case BLOCKED_CONTAINER -> current.recordContainerAttempt();
+                case PROTECTED_DESTRUCTION -> current.recordDestructionAttempt();
+                default -> current;
+            };
+            summary.put(playerId, next);
+        }
+        return Map.copyOf(summary);
+    }
+
     public void flushIfDirty() {
         if (isDirtyAndIdle()) {
             flushNow();

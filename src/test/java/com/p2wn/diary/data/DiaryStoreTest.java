@@ -15,6 +15,7 @@ import org.mockito.MockedStatic;
 import java.io.File;
 import java.nio.file.Path;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.CompletionException;
 import java.util.ArrayDeque;
@@ -412,6 +413,53 @@ class DiaryStoreTest {
         assertEquals(delivery, restarted.getDeliveryEntries().getFirst().delivery().token());
         assertEquals(DeliveryLifecycle.QUEUED, restarted.getDeliveryEntries().getFirst().delivery().lifecycle());
         assertEquals(1, restarted.getPendingDeliveries(player, 10).size());
+    }
+
+    @Test
+    void advancementEvidencePersistsAndSurvivesRestart() {
+        UUID player = UUID.randomUUID();
+        DiaryStore first = store();
+        first.getOrCreateDiaryId(player);
+        first.markIssued(player);
+        first.recordDiaryEdit(player);
+        first.recordDiaryEdit(player);
+        first.recordDestructionAttempt(player);
+        first.recordVoidReturn(player);
+        first.recordContainerAttempt(player);
+        first.recordGroundPickup(player);
+        first.flushDurably().join();
+
+        DiaryStore restarted = store();
+        restarted.load();
+        assertEquals(
+                new DiaryAdvancementEvidence(true, 2, 1, 1, 1, 1),
+                restarted.getAdvancementEvidence(player));
+    }
+
+    @Test
+    void legacyAdvancementMigrationUsesOnlyProvableHighWaterEvidence() throws Exception {
+        UUID player = UUID.randomUUID();
+        YamlConfiguration yaml = new YamlConfiguration();
+        yaml.set("players." + player + ".id", "legacy-diary");
+        yaml.set("players." + player + ".issuedAt", 123L);
+        yaml.save(temp.resolve("diaries.yml").toFile());
+
+        DiaryStore store = store();
+        store.load();
+        store.reconcileAdvancementEvidence(Map.of(
+                player, new DiaryAdvancementEvidence(false, 7, 3, 1, 2, 4)));
+        assertEquals(
+                new DiaryAdvancementEvidence(true, 7, 3, 1, 2, 4),
+                store.getAdvancementEvidence(player));
+        store.flushDurably().join();
+
+        DiaryStore restarted = store();
+        restarted.load();
+        restarted.reconcileAdvancementEvidence(Map.of(
+                player, new DiaryAdvancementEvidence(false, 99, 99, 99, 99, 99)));
+        assertEquals(
+                new DiaryAdvancementEvidence(true, 7, 3, 1, 2, 4),
+                restarted.getAdvancementEvidence(player));
     }
 
     private void writeLegacyDelivery(YamlConfiguration yaml, UUID player, int index, UUID token,
