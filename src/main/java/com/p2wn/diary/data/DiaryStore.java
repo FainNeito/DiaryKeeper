@@ -69,6 +69,8 @@ public final class DiaryStore {
     private final Set<String> diaryIdsWithActiveLocations = new HashSet<>();
 
     private String lastWorldUid;
+    // Exclusive analytics cutoff, persisted atomically with the current world UUID.
+    private long advancementEvidenceResetAfter;
     private boolean dirty;
     private int dirtyVersion;
     private boolean saveQueued;
@@ -96,6 +98,7 @@ public final class DiaryStore {
 
         FileConfiguration data = YamlConfiguration.loadConfiguration(file);
         lastWorldUid = data.getString("lastWorldUid");
+        advancementEvidenceResetAfter = Math.max(0L, data.getLong("advancementEvidenceResetAfter", 0L));
 
         loadPlayers(data.getConfigurationSection("players"));
         loadIdentities(data.getConfigurationSection("identities"));
@@ -139,7 +142,13 @@ public final class DiaryStore {
         }
     }
 
+    public long getAdvancementEvidenceResetAfter() {
+        return advancementEvidenceResetAfter;
+    }
+
     public void resetAllPlayers() {
+        // Analytics timestamps have second precision; exclude the ambiguous reset second.
+        advancementEvidenceResetAfter = Math.max(advancementEvidenceResetAfter, Instant.now().getEpochSecond());
         records.clear();
         diaryRecords.clear();
         purgeOperations.clear();
@@ -1103,6 +1112,7 @@ public final class DiaryStore {
     private SaveSnapshot createSnapshot() throws IOException {
         FileConfiguration data = new YamlConfiguration();
         data.set("lastWorldUid", lastWorldUid);
+        data.set("advancementEvidenceResetAfter", advancementEvidenceResetAfter);
 
         for (Map.Entry<UUID, PlayerRecord> entry : records.entrySet()) {
             String playerKey = entry.getKey().toString();

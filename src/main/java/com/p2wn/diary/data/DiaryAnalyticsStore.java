@@ -136,8 +136,14 @@ public final class DiaryAnalyticsStore {
      * used for players whose dedicated advancement evidence has not been initialized.
      */
     public Map<UUID, DiaryAdvancementEvidence> advancementEvidenceSummary() {
+        return advancementEvidenceSummary(0L);
+    }
+
+    /** Reconciliation excludes pre-reset and same-second ambiguous history, not the audit log itself. */
+    public Map<UUID, DiaryAdvancementEvidence> advancementEvidenceSummary(long resetAfterEpochSeconds) {
         Map<UUID, DiaryAdvancementEvidence> summary = new HashMap<>();
         for (DiaryAnalyticsEvent event : events) {
+            if (event.occurredAt() <= resetAfterEpochSeconds) continue;
             UUID playerId = event.playerUuid();
             if (playerId == null) continue;
             DiaryAdvancementEvidence current =

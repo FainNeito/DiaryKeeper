@@ -517,4 +517,19 @@ class DiaryStoreTest {
         return new DiaryLocationRecord(type, "player", holder, "holder", null, null, null,
                 null, null, null, null, List.<String>of(), "inventory", 0, 1L, 1L, active);
     }
+    @Test
+    void worldResetPersistsAnAnalyticsCutoffAcrossRestart() throws Exception {
+        DiaryStore store=store(); UUID player=UUID.randomUUID();
+        store.getOrCreateDiaryId(player); store.markIssued(player); store.recordDiaryEdit(player);
+        store.resetAllPlayers(); store.setLastWorldUid("new-world"); store.flushDurably().join();
+        var yaml=YamlConfiguration.loadConfiguration(temp.resolve("diaries.yml").toFile());
+        long cutoff=yaml.getLong("advancementEvidenceResetAfter",0L);
+        assertTrue(cutoff>0,"A reset must durably exclude old analytics, even for players absent after reset");
+        DiaryStore reloaded=store(); reloaded.load();
+        assertEquals("new-world",reloaded.getLastWorldUid());
+        var getter=DiaryStore.class.getMethod("getAdvancementEvidenceResetAfter");
+        assertEquals(cutoff,getter.invoke(reloaded));
+        assertEquals(DiaryAdvancementEvidence.EMPTY,reloaded.getAdvancementEvidence(player));
+    }
+
 }
