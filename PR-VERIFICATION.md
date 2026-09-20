@@ -4,7 +4,7 @@ This PR retains the provider's existing Java 21 / Paper 1.21.11 compilation base
 
 Original source change remains in feature/advancement-evidence. Existing player data must be retained. New local/hosted results will be recorded on the PR, not inferred from older test counts.
 
-Fresh PR-cleanup local verification: {"tests":88,"failures":0,"errors":0,"skipped":0}. Clean Maven verify packaged the existing plugin version without gameplay changes. Hosted CI remains a separate check on the pushed head.
+Historical initial evidence implementation (f0af087, version 1.4.10): 88 Java tests, zero failures/errors/skips. This predates the reset-safe migration fix and is not the verification result for the current 1.4.11 code. Hosted CI remains a separate check on each pushed head.
 
 ## Fresh review: world-reset history boundary
 
@@ -12,4 +12,6 @@ The initial follow-up review reproduced a migration bug: retained pre-reset anal
 
 Regression evidence: diary-reset-red.log failed the missing persisted cutoff and filtered-summary cases on the old code. The final suite also checks startup ordering.
 
-Final reset-fix verification: 91 Java tests, zero failures/errors/skips; clean verify packages DiaryKeeper 1.4.11. This is local evidence, not a deployment.
+Reset-fix verification at 112426e: 91 Java tests, zero failures/errors/skips; clean verify packaged DiaryKeeper 1.4.11. This is local evidence, not a deployment. This follow-up changes only verification provenance; a new exact-head CI run validates the documentation commit.
+
+Documentation follow-up: round2-diary-verify.log reran clean verification after the provenance correction, with 91 tests and zero failures/errors/skips. No runtime code changed in this follow-up.
