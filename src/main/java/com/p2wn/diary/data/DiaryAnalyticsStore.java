@@ -21,6 +21,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 
@@ -141,7 +142,7 @@ public final class DiaryAnalyticsStore {
 
     /** Reconciliation excludes pre-reset and same-second ambiguous history, not the audit log itself. */
     public Map<UUID, DiaryAdvancementEvidence> advancementEvidenceSummary(long resetAfterEpochSeconds) {
-        Map<UUID, DiaryAdvancementEvidence> summary = new HashMap<>();
+        Map<UUID, DiaryAdvancementEvidence> summary = new ConcurrentHashMap<>();
         for (DiaryAnalyticsEvent event : events) {
             if (event.occurredAt() <= resetAfterEpochSeconds) continue;
             UUID playerId = event.playerUuid();

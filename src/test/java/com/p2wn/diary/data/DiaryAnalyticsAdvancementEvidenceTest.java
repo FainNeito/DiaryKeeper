@@ -15,6 +15,7 @@ import static org.mockito.Mockito.*;
 
 class DiaryAnalyticsAdvancementEvidenceTest {
     private static final String PLAYER_NAME = "Player";
+    private static final String DIARY_ID = "diary";
     @TempDir Path temp;
 
     @Test
@@ -26,13 +27,13 @@ class DiaryAnalyticsAdvancementEvidenceTest {
 
         DiaryAnalyticsStore store = new DiaryAnalyticsStore(plugin);
         UUID player = UUID.randomUUID();
-        store.record(DiaryAnalyticsEventType.INITIAL_ISSUE, player, PLAYER_NAME, "diary", "first join");
-        store.record(DiaryAnalyticsEventType.DIARY_EDITED, player, PLAYER_NAME, "diary", "edited");
-        store.record(DiaryAnalyticsEventType.DIARY_EDITED, player, PLAYER_NAME, "diary", "sign blocked");
-        store.record(DiaryAnalyticsEventType.PROTECTED_DESTRUCTION, player, PLAYER_NAME, "diary", "LAVA");
-        store.record(DiaryAnalyticsEventType.VOID_RETURN, player, PLAYER_NAME, "diary", "returned to inventory");
-        store.record(DiaryAnalyticsEventType.BLOCKED_CONTAINER, player, PLAYER_NAME, "diary", "ENDER_CHEST");
-        store.record(DiaryAnalyticsEventType.DIARY_OBTAINED, player, PLAYER_NAME, "diary", "picked up");
+        store.record(DiaryAnalyticsEventType.INITIAL_ISSUE, player, PLAYER_NAME, DIARY_ID, "first join");
+        store.record(DiaryAnalyticsEventType.DIARY_EDITED, player, PLAYER_NAME, DIARY_ID, "edited");
+        store.record(DiaryAnalyticsEventType.DIARY_EDITED, player, PLAYER_NAME, DIARY_ID, "sign blocked");
+        store.record(DiaryAnalyticsEventType.PROTECTED_DESTRUCTION, player, PLAYER_NAME, DIARY_ID, "LAVA");
+        store.record(DiaryAnalyticsEventType.VOID_RETURN, player, PLAYER_NAME, DIARY_ID, "returned to inventory");
+        store.record(DiaryAnalyticsEventType.BLOCKED_CONTAINER, player, PLAYER_NAME, DIARY_ID, "ENDER_CHEST");
+        store.record(DiaryAnalyticsEventType.DIARY_OBTAINED, player, PLAYER_NAME, DIARY_ID, "picked up");
 
         assertEquals(
                 new DiaryAdvancementEvidence(true, 1, 1, 1, 1, 1),
@@ -68,7 +69,7 @@ class DiaryAnalyticsAdvancementEvidenceTest {
         file.set(path + "type", type.name());
         file.set(path + "playerUuid", player.toString());
         file.set(path + "playerName", PLAYER_NAME);
-        file.set(path + "diaryId", "diary");
+        file.set(path + "diaryId", DIARY_ID);
         file.set(path + "detail", detail);
     }
 
