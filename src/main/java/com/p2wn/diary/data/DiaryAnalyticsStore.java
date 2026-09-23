@@ -148,19 +148,23 @@ public final class DiaryAnalyticsStore {
             if (playerId == null) continue;
             DiaryAdvancementEvidence current =
                     summary.getOrDefault(playerId, DiaryAdvancementEvidence.EMPTY);
-            DiaryAdvancementEvidence next = switch (event.type()) {
-                case INITIAL_ISSUE, ADMIN_ISSUE -> current.withReceived();
-                case DIARY_EDITED -> "edited".equalsIgnoreCase(event.detail())
-                        ? current.recordEdit() : current;
-                case DIARY_OBTAINED -> current.recordGroundPickup();
-                case VOID_RETURN -> current.recordVoidReturn();
-                case BLOCKED_CONTAINER -> current.recordContainerAttempt();
-                case PROTECTED_DESTRUCTION -> current.recordDestructionAttempt();
-                default -> current;
-            };
-            summary.put(playerId, next);
+            summary.put(playerId, applyAdvancementEvent(current, event));
         }
         return Map.copyOf(summary);
+    }
+
+    private static DiaryAdvancementEvidence applyAdvancementEvent(
+            DiaryAdvancementEvidence current, DiaryAnalyticsEvent event) {
+        return switch (event.type()) {
+            case INITIAL_ISSUE, ADMIN_ISSUE -> current.withReceived();
+            case DIARY_EDITED -> "edited".equalsIgnoreCase(event.detail())
+                    ? current.recordEdit() : current;
+            case DIARY_OBTAINED -> current.recordGroundPickup();
+            case VOID_RETURN -> current.recordVoidReturn();
+            case BLOCKED_CONTAINER -> current.recordContainerAttempt();
+            case PROTECTED_DESTRUCTION -> current.recordDestructionAttempt();
+            default -> current;
+        };
     }
 
     public void flushIfDirty() {

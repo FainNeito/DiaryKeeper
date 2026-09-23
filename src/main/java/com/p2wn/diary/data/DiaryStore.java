@@ -34,6 +34,8 @@ import java.util.concurrent.ExecutionException;
 
 public final class DiaryStore {
 
+    private static final long UNSET_ISSUED_AT = 0L;
+
     public enum DurableQueueResult { SAVED, ALREADY_QUEUED, SAVE_FAILED, PLUGIN_DISABLED }
 
     private static final class PlayerRecord {
@@ -1294,26 +1296,31 @@ public final class DiaryStore {
             }
             PlayerRecord record = getOrCreateRecord(uuid);
             record.diaryId = players.getString(key + ".id");
-            long issuedAt = players.getLong(key + ".issuedAt", 0L);
-            if (issuedAt > 0L) {
+            long issuedAt = players.getLong(key + ".issuedAt", UNSET_ISSUED_AT);
+            if (issuedAt > UNSET_ISSUED_AT) {
                 record.issuedAt = issuedAt;
             }
 
             ConfigurationSection advancement = players.getConfigurationSection(key + ".advancements");
             if (advancement != null) {
-                record.advancementEvidence = new DiaryAdvancementEvidence(
-                        advancement.getBoolean("received", issuedAt > 0L),
-                        Math.max(0, advancement.getInt("edits", 0)),
-                        Math.max(0, advancement.getInt("destructionAttempts", 0)),
-                        Math.max(0, advancement.getInt("voidReturns", 0)),
-                        Math.max(0, advancement.getInt("containerAttempts", 0)),
-                        Math.max(0, advancement.getInt("groundPickups", 0))
-                );
+                record.advancementEvidence = readAdvancementEvidence(advancement, issuedAt);
                 record.advancementEvidenceInitialized = true;
-            } else if (issuedAt > 0L) {
+            } else if (issuedAt > UNSET_ISSUED_AT) {
                 record.advancementEvidence = DiaryAdvancementEvidence.EMPTY.withReceived();
             }
         }
+    }
+
+    private static DiaryAdvancementEvidence readAdvancementEvidence(
+            ConfigurationSection advancement, long issuedAt) {
+        return new DiaryAdvancementEvidence(
+                advancement.getBoolean("received", issuedAt > UNSET_ISSUED_AT),
+                Math.max(0, advancement.getInt("edits", 0)),
+                Math.max(0, advancement.getInt("destructionAttempts", 0)),
+                Math.max(0, advancement.getInt("voidReturns", 0)),
+                Math.max(0, advancement.getInt("containerAttempts", 0)),
+                Math.max(0, advancement.getInt("groundPickups", 0))
+        );
     }
 
     private void loadIdentities(ConfigurationSection section) {
