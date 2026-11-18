@@ -27,6 +27,7 @@ import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
 class DiaryStoreTest {
+    private static final String DIARIES_FILE = "diaries.yml";
 
     @TempDir
     Path temp;
@@ -36,7 +37,7 @@ class DiaryStoreTest {
         UUID player = UUID.randomUUID();
         UUID token = UUID.randomUUID();
         UUID purge = UUID.randomUUID();
-        File file = temp.resolve("diaries.yml").toFile();
+        File file = temp.resolve(DIARIES_FILE).toFile();
         YamlConfiguration yaml = new YamlConfiguration();
         String delivery = "pendingDeliveries." + player + ".0";
         String operation = "purgeOperations." + purge;
@@ -82,7 +83,7 @@ class DiaryStoreTest {
         store.flushDurably().join();
 
         YamlConfiguration yaml = YamlConfiguration.loadConfiguration(
-                temp.resolve("diaries.yml").toFile());
+                temp.resolve(DIARIES_FILE).toFile());
         String base = "purgeOperations." + operation.operationId();
         assertEquals("PROCESSING_KNOWN_UNLOADED_CHUNKS", yaml.getString(base + ".state"));
         assertEquals(2, yaml.getInt(base + ".removed.chunk"));
@@ -130,7 +131,7 @@ class DiaryStoreTest {
     @Test
     void legacyWorldNameIsMigratedToUuid() throws Exception {
         UUID worldId = UUID.randomUUID();
-        File file = temp.resolve("diaries.yml").toFile();
+        File file = temp.resolve(DIARIES_FILE).toFile();
         YamlConfiguration yaml = new YamlConfiguration();
         String base = "trackedDiaries.diary.locations.0";
         yaml.set(base + ".type", DiaryLocationType.BLOCK_CONTAINER.name());
@@ -275,7 +276,7 @@ class DiaryStoreTest {
         yaml.set("trackedDiaries.diary.ownerUuid", owner.toString());
         yaml.set("trackedDiaries.diary.ownerName", "ExactBedrockName");
         yaml.set("trackedDiaries.diary.snapshotUpdatedAt", 200L);
-        yaml.save(temp.resolve("diaries.yml").toFile());
+        yaml.save(temp.resolve(DIARIES_FILE).toFile());
 
         DiaryStore first = store();
         first.load();
@@ -305,7 +306,7 @@ class DiaryStoreTest {
         yaml.set("trackedDiaries.diary.ownerUuid", first.toString());
         yaml.set("trackedDiaries.diary.ownerName", "OldTrackedName");
         yaml.set("trackedDiaries.diary.snapshotUpdatedAt", 100L);
-        yaml.save(temp.resolve("diaries.yml").toFile());
+        yaml.save(temp.resolve(DIARIES_FILE).toFile());
 
         DiaryStore store = store();
         store.load();
@@ -380,7 +381,7 @@ class DiaryStoreTest {
         yaml.set("pendingDeliveries." + player + ".0.deliveredAt", 1L);
         writeLegacyDelivery(yaml, player, 1, queued, "QUEUED", encoded);
         writeLegacyDelivery(yaml, player, 2, pending, "RELEASE_PENDING", encoded);
-        yaml.save(temp.resolve("diaries.yml").toFile());
+        yaml.save(temp.resolve(DIARIES_FILE).toFile());
 
         DiaryStore store = store();
         store.load();
@@ -475,7 +476,7 @@ class DiaryStoreTest {
         YamlConfiguration yaml = new YamlConfiguration();
         yaml.set("players." + player + ".id", "legacy-diary");
         yaml.set("players." + player + ".issuedAt", 123L);
-        yaml.save(temp.resolve("diaries.yml").toFile());
+        yaml.save(temp.resolve(DIARIES_FILE).toFile());
 
         DiaryStore store = store();
         store.load();
@@ -555,7 +556,7 @@ class DiaryStoreTest {
         DiaryStore store=store(); UUID player=UUID.randomUUID();
         store.getOrCreateDiaryId(player); store.markIssued(player); store.recordDiaryEdit(player);
         store.resetAllPlayers(); store.setLastWorldUid("new-world"); store.flushDurably().join();
-        var yaml=YamlConfiguration.loadConfiguration(temp.resolve("diaries.yml").toFile());
+        var yaml=YamlConfiguration.loadConfiguration(temp.resolve(DIARIES_FILE).toFile());
         long cutoff=yaml.getLong("advancementEvidenceResetAfter",0L);
         assertTrue(cutoff>0,"A reset must durably exclude old analytics, even for players absent after reset");
         DiaryStore reloaded=store(); reloaded.load();

@@ -1300,7 +1300,7 @@ public final class DiaryStore {
             PlayerRecord record = entry.getValue();
 
             players.add(new PlayerRow(playerKey, record.diaryId, record.issuedAt,
-                    record.advancementEvidenceInitialized ? record.advancementEvidence : null));
+                    record.advancementEvidenceInitialized, record.advancementEvidence));
             int deliveryIndex = 0;
             for (PendingDelivery delivery : record.pendingDeliveries) {
                 String basePath = "pendingDeliveries." + playerKey + "." + deliveryIndex++;
@@ -1949,13 +1949,14 @@ public final class DiaryStore {
         }
     }
 
-    private record PlayerRow(String key, String id, Long issuedAt, DiaryAdvancementEvidence evidence) {
+    private record PlayerRow(String key, String id, Long issuedAt, boolean hasEvidence,
+                             DiaryAdvancementEvidence evidence) {
         void write(FileConfiguration data) {
-            if (id == null && issuedAt == null && evidence == null) return;
+            if (id == null && issuedAt == null && !hasEvidence) return;
             var section = data.createSection("players." + key);
             section.set("id", id);
             section.set("issuedAt", issuedAt);
-            if (evidence != null) {
+            if (hasEvidence) {
                 var advancement = section.createSection("advancements");
                 advancement.set("received", evidence.received());
                 advancement.set("edits", evidence.edits());

@@ -41,22 +41,27 @@ class DiarySnapshotBenchmarkTest {
         DiaryStore store = new DiaryStore(plugin, data -> { }, new SnapshotItemCache(item -> "encoded"));
         ItemStack item = mock(ItemStack.class);
         when(item.clone()).thenReturn(item);
-        for (int i = 0; i < 2344; i++) {
-            UUID owner = new UUID(0, i % 2325);
+        final int playerCount = 2325;
+        final int trackedCount = 2344;
+        final int deliveryCount = 7;
+        UUID[] owners = java.util.stream.IntStream.range(0, playerCount)
+                .mapToObj(index -> new UUID(0, index)).toArray(UUID[]::new);
+        for (int i = 0; i < trackedCount; i++) {
+            UUID owner = owners[i % playerCount];
             store.observeIdentity(owner, "owner" + i);
             store.recordDiaryEdit(owner);
             store.updateTrackedSnapshot("diary" + i, owner, "owner" + i, item);
-            if (i < 7) store.queueDelivery(owner, DeliveryReason.VOID_RETURN, item, UUID.randomUUID());
+            if (i < deliveryCount) store.queueDelivery(owner, DeliveryReason.VOID_RETURN, item, UUID.randomUUID());
         }
         long[] captures = new long[30];
         for (int i = -5; i < captures.length; i++) {
-            store.recordDiaryEdit(new UUID(0, 1));
+            store.recordDiaryEdit(owners[1]);
             store.flushIfDirty();
             if (i >= 0) captures[i] = store.lastSnapshotMetrics().elapsedNanos();
         }
-        assertEquals(2325, store.lastSnapshotMetrics().playerRecords());
-        assertEquals(2344, store.lastSnapshotMetrics().trackedRecords());
-        assertEquals(7, store.lastSnapshotMetrics().deliveryRecords());
+        assertEquals(playerCount, store.lastSnapshotMetrics().playerRecords());
+        assertEquals(trackedCount, store.lastSnapshotMetrics().trackedRecords());
+        assertEquals(deliveryCount, store.lastSnapshotMetrics().deliveryRecords());
         assertEquals(0, store.lastSnapshotMetrics().encodings());
         System.out.println("Production-count synthetic capture p50/p95/p99 ms=" + percentiles(captures));
     }
