@@ -1,5 +1,6 @@
 package com.p2wn.diary.data;
 
+import com.p2wn.diary.util.ItemIO;
 import org.bukkit.Bukkit;
 import org.bukkit.Server;
 import org.bukkit.World;
@@ -29,6 +30,38 @@ class DiaryStoreTest {
 
     @TempDir
     Path temp;
+
+    @Test
+    void firstSaveReusesSuccessfullyDecodedItemPayloads() throws Exception {
+        UUID player = UUID.randomUUID();
+        UUID token = UUID.randomUUID();
+        UUID purge = UUID.randomUUID();
+        File file = temp.resolve("diaries.yml").toFile();
+        YamlConfiguration yaml = new YamlConfiguration();
+        String delivery = "pendingDeliveries." + player + ".0";
+        String operation = "purgeOperations." + purge;
+        yaml.set(delivery + ".token", token.toString());
+        yaml.set(delivery + ".itemBase64", "delivery");
+        yaml.set("trackedDiaries.test.snapshotBase64", "tracked");
+        yaml.set(operation + ".diaryId", "test");
+        yaml.set(operation + ".snapshotBase64", "purge");
+        yaml.save(file);
+        ItemStack item = mock(ItemStack.class);
+        when(item.clone()).thenReturn(item);
+        try (var codec = mockStatic(ItemIO.class)) {
+            codec.when(() -> ItemIO.fromBase64(anyString())).thenReturn(item);
+            codec.when(() -> ItemIO.toBase64(any())).thenReturn("unexpected re-encoding");
+            DiaryStore store = store();
+            store.load();
+            store.recordDiaryEdit(player);
+            store.flushDurably().join();
+            assertEquals(0, store.lastSnapshotMetrics().encodings());
+            var saved = YamlConfiguration.loadConfiguration(file);
+            assertEquals("tracked", saved.getString("trackedDiaries.test.snapshotBase64"));
+            assertEquals("delivery", saved.getString(delivery + ".itemBase64"));
+            assertEquals("purge", saved.getString(operation + ".snapshotBase64"));
+        }
+    }
 
     @Test
     void partialChunkProgressAndEveryOperationMutationArePersisted() {

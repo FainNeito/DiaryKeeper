@@ -25,6 +25,43 @@ class DiarySnapshotBenchmarkTest {
     @TempDir Path directory;
 
     @Test
+    void oneChangedPlayerAtProductionRecordCounts() {
+        Plugin plugin = mock(Plugin.class);
+        Server server = mock(Server.class);
+        BukkitScheduler scheduler = mock(BukkitScheduler.class);
+        when(plugin.getServer()).thenReturn(server);
+        when(server.getScheduler()).thenReturn(scheduler);
+        when(plugin.getDataFolder()).thenReturn(directory.toFile());
+        when(plugin.getLogger()).thenReturn(java.util.logging.Logger.getAnonymousLogger());
+        when(scheduler.runTaskAsynchronously(eq(plugin), any(Runnable.class))).thenAnswer(call -> {
+            call.<Runnable>getArgument(1).run();
+            return null;
+        });
+        // Measure capture only. Cached synthetic payloads isolate the zero-encoding case.
+        DiaryStore store = new DiaryStore(plugin, data -> { }, new SnapshotItemCache(item -> "encoded"));
+        ItemStack item = mock(ItemStack.class);
+        when(item.clone()).thenReturn(item);
+        for (int i = 0; i < 2344; i++) {
+            UUID owner = new UUID(0, i % 2325);
+            store.observeIdentity(owner, "owner" + i);
+            store.recordDiaryEdit(owner);
+            store.updateTrackedSnapshot("diary" + i, owner, "owner" + i, item);
+            if (i < 7) store.queueDelivery(owner, DeliveryReason.VOID_RETURN, item, UUID.randomUUID());
+        }
+        long[] captures = new long[30];
+        for (int i = -5; i < captures.length; i++) {
+            store.recordDiaryEdit(new UUID(0, 1));
+            store.flushIfDirty();
+            if (i >= 0) captures[i] = store.lastSnapshotMetrics().elapsedNanos();
+        }
+        assertEquals(2325, store.lastSnapshotMetrics().playerRecords());
+        assertEquals(2344, store.lastSnapshotMetrics().trackedRecords());
+        assertEquals(7, store.lastSnapshotMetrics().deliveryRecords());
+        assertEquals(0, store.lastSnapshotMetrics().encodings());
+        System.out.println("Production-count synthetic capture p50/p95/p99 ms=" + percentiles(captures));
+    }
+
+    @Test
     void repeatedUnchangedSavesReportColdVsCachedPercentiles() {
         Plugin plugin = mock(Plugin.class);
         Server server = mock(Server.class);
